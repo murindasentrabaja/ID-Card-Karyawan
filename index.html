@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modern Corporate ID Card — Digital System</title>
+
+<!-- Fonts & External Libraries -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+<style>
+  /* ==========================================================================
+     THEME & GLOBAL VARIABLES
+     ========================================================================== */
+  :root {
+    --bg-page: #e2e8f0;
+    --panel-bg: #ffffff;
+    --panel-border: #cbd5e1;
+    
+    /* Warna Corporate Modern (Biru & Oranye) */
+    --primary-blue: #0f172a;
+    --accent-blue: #2563eb;
+    --accent-orange: #ea580c;
+    
+    /* Text Colors */
+    --text-dark: #0f172a;
+    --text-muted: #475569;
+    
+    /* Fonts */
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+    --font-heading: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%; font-family: var(--font-sans); color: var(--text-dark);
+    background-color: var(--bg-page); overflow-x: hidden;
+  }
+
+  /* Ambient Web Background */
+  .page-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(234, 88, 12, 0.08) 0%, transparent 50%);
+    background-size: cover; pointer-events: none;
+  }
+
+  /* ---------- Topbar Navigation ---------- */
+  .topbar {
+    position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--panel-border); box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 12px; }
+  .topbar-brand img { height: 34px; width: auto; object-fit: contain; }
+  .topbar-title { font-family: var(--font-heading); font-weight: 800; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .sync-status {
+    display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; font-family: var(--font-heading);
+    padding: 6px 14px; border-radius: 20px; background: #f8fafc; border: 1px solid var(--panel-border);
+    letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted);
+  }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+  .sync-status.online .sync-dot { background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+  .sync-status.loading .sync-dot { background: var(--accent-orange); animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
+
+  /* ---------- Main Layout Stage ---------- */
+  .stage {
+    position: relative; z-index: 1; display: flex; gap: 40px; padding: 40px 32px;
+    align-items: flex-start; justify-content: center; flex-wrap: wrap; max-width: 1280px; margin: 0 auto;
+  }
+
+  /* ---------- Control Panel Sidebar ---------- */
+  .control-panel {
+    width: 340px; flex: none; background: var(--panel-bg); border: 1px solid var(--panel-border);
+    border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.05);
+  }
+  .panel-header { font-family: var(--font-heading); font-weight: 800; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+  
+  .search-box input {
+    width: 100%; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 16px;
+    color: var(--text-dark); font-family: var(--font-sans); font-size: 13px; font-weight: 500; outline: none; transition: all 0.3s;
+  }
+  .search-box input:focus { background: #ffffff; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+  .employee-list { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .employee-list::-webkit-scrollbar { width: 5px; }
+  .employee-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+  .emp-row {
+    padding: 12px 16px; background: #ffffff; border-radius: 10px; cursor: pointer; border: 1px solid #e2e8f0; transition: all 0.2s ease;
+  }
+  .emp-row:hover { background: #f8fafc; border-color: #cbd5e1; }
+  .emp-row.active {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--accent-blue) 100%);
+    border-color: transparent; color: #ffffff; box-shadow: 0 8px 15px rgba(37, 99, 235, 0.2);
+  }
+  .emp-row .emp-name { display: block; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .emp-row .emp-meta { font-size: 11px; color: var(--text-muted); font-family: var(--font-heading); }
+  .emp-row.active .emp-meta { color: rgba(255,255,255,0.8); }
+
+  .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .btn {
+    font-family: var(--font-sans); font-size: 13px; font-weight: 700; padding: 14px; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.25s ease; border: none;
+  }
+  .btn.primary { background: linear-gradient(135deg, var(--accent-blue) 0%, #1d4ed8 100%); color: #ffffff; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25); }
+  .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(37, 99, 235, 0.35); }
+  .btn.secondary { background: #ffffff; color: var(--text-dark); border: 1px solid #cbd5e1; }
+  .btn.secondary:hover { background: #f8fafc; border-color: #94a3b8; }
+
+  /* ---------- CARD DISPLAY STAGE ---------- */
+  .card-stage-wrapper { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .card-stage { perspective: 1500px; }
+
+  .id-card { width: 320px; height: 508px; position: relative; cursor: pointer; }
+  .card-inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+  }
+  .id-card.flipped .card-inner { transform: rotateY(180deg); }
+
+  /* ---------- CARD FACES & BACKGROUND ---------- */
+  .card-face {
+    position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
+    background-color: #ffffff; border: 1px solid #cbd5e1;
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.15);
+  }
+
+  /* SVG Background */
+  .card-bg {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  }
+
+  /* Gradient Holographic Line */
+  .card-front::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+    background: linear-gradient(90deg, var(--primary-blue), var(--accent-blue), var(--accent-orange)); z-index: 10;
+  }
+  .card-back::before {
+    content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 6px;
+    background: linear-gradient(90deg, var(--accent-orange), var(--accent-blue), var(--primary-blue)); z-index: 10;
+  }
+  /* Micro-security line right edge */
+  .security-line {
+    position: absolute; right: 4px; top: 20px; bottom: 20px; width: 3px; z-index: 5;
+    background: repeating-linear-gradient(45deg, rgba(37,99,235,0.15) 0, rgba(37,99,235,0.15) 2px, transparent 2px, transparent 6px);
+  }
+
+  /* Lanyard Slot */
+  .lanyard-hole {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 45px; height: 6px;
+    border-radius: 10px; background: #e2e8f0; border: 1px solid #94a3b8;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,1); z-index: 20;
+  }
+
+  /* FRONT DESIGN */
+  .card-header { 
+    margin: 32px 20px 8px; padding: 8px;
+    background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.8); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  }
+  .card-header img { height: 26px; max-width: 180px; object-fit: contain; }
+
+  .card-front-body { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 20px 15px; z-index: 2; text-align: center; justify-content: space-between; }
+
+  /* Photo Container HUD Style - DIPERBESAR */
+  .photo-container { position: relative; width: 145px; height: 185px; margin: 2px auto 10px; flex-shrink: 0; }
+  .photo-frame {
+    width: 100%; height: 100%; padding: 4px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-orange));
+    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15);
+  }
+  .employee-photo, .initials-avatar { 
+    width: 100%; height: 100%; object-fit: cover; object-position: top center; background: #ffffff; display: block;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+    border-radius: 9px;
+  }
+  .initials-avatar {
+    display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 800;
+    font-family: var(--font-heading); background: #f8fafc; color: var(--accent-blue);
+  }
+
+  /* Employee Details */
+  .emp-details { 
+    width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px;
+    background: rgba(255,255,255,0.6); backdrop-filter: blur(4px); border-radius: 12px;
+  }
+  .employee-name {
+    font-size: 19px; font-weight: 800; color: var(--primary-blue); line-height: 1.1; letter-spacing: -0.3px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .employee-role { font-size: 11px; color: var(--accent-blue); font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
+  .dept-badge {
+    margin-top: 2px; display: inline-block; padding: 4px 14px;
+    background: rgba(234, 88, 12, 0.08); border-left: 2px solid var(--accent-orange); border-right: 2px solid var(--accent-orange);
+    font-family: var(--font-heading); font-size: 9px; font-weight: 800;
+    color: var(--accent-orange); letter-spacing: 1.5px; text-transform: uppercase;
+  }
+
+  /* Barcode Box */
+  .barcode-box { width: 100%; padding: 4px; background: rgba(255,255,255,0.7); border-radius: 8px; margin: 4px 0; }
+  .barcode-box svg { width: 100%; max-height: 38px; display: block; }
+
+  /* Front Footer */
+  .front-footer {
+    width: 100%; padding-top: 8px; border-top: 1px dashed rgba(37, 99, 235, 0.2);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .id-block { text-align: left; }
+  .id-label { display: block; font-family: var(--font-mono); font-size: 7px; color: var(--accent-orange); letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+  .id-value { font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--primary-blue); letter-spacing: 1px; }
+  
+  /* QR Box Front - DIPERBESAR */
+  .qr-box.front-qr {
+    width: 76px; height: 76px; background: #ffffff; border-radius: 8px; padding: 4px;
+    border: 1px solid #cbd5e1; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .qr-box canvas, .qr-box img { width: 100% !important; height: 100% !important; border-radius: 4px; }
+
+  /* BACK SIDE */
+  .card-back { transform: rotateY(180deg); }
+  .card-back-body { flex: 1; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 2; text-align: left; justify-content: space-between; }
+  
+  .back-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 8px; border-bottom: 2px solid rgba(37,99,235,0.1); }
+  .back-header img { height: 20px; }
+  .back-title { display: flex; flex-direction: column; }
+  .bt-1 { font-family: var(--font-mono); font-size: 6.5px; color: var(--accent-orange); letter-spacing: 1.5px; }
+  .bt-2 { font-family: var(--font-heading); font-size: 10px; font-weight: 800; color: var(--primary-blue); letter-spacing: 0.5px; }
+
+  .back-section { background: rgba(255,255,255,0.7); backdrop-filter: blur(4px); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.5); }
+  .back-section h3 { font-family: var(--font-mono); font-size: 9px; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .back-section h3::before { content: ''; display: block; width: 6px; height: 6px; background: var(--accent-orange); border-radius: 50%; }
+  
+  .contact-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .contact-row:last-child { margin-bottom: 0; }
+  .icon-box { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .icon-box svg { width: 12px; height: 12px; }
+  .contact-text { font-size: 9px; font-weight: 600; color: var(--text-dark); line-height: 1.3; }
+
+  /* Modern Terms List (Tanpa tanda '>') */
+  .terms-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .terms-list li { 
+    position: relative; padding-left: 14px; font-size: 8px; line-height: 1.4; 
+    color: var(--text-muted); font-weight: 600; font-family: var(--font-sans); 
+  }
+  .terms-list li::before { 
+    content: ''; position: absolute; left: 0; top: 3.5px; 
+    width: 5px; height: 5px; background: var(--accent-blue); 
+    border-radius: 50%; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); 
+  }
+
+  .back-footer { padding-top: 8px; display: flex; align-items: flex-end; justify-content: center; gap: 15px; }
+  .back-qr-group { display: flex; flex-direction: column; align-items: center; gap: 6px; background: rgba(255,255,255,0.8); padding: 8px; border-radius: 10px; border: 1px dashed rgba(37,99,235,0.2); width: 45%; }
+  .back-qr-group span { font-family: var(--font-mono); font-size: 7px; font-weight: 700; color: var(--primary-blue); letter-spacing: 1px; text-transform: uppercase; }
+  /* QR Box Back - DIPERBESAR */
+  .back-qr-group .qr-box { width: 62px; height: 62px; background: #ffffff; border-radius: 6px; padding: 3px; border: 1px solid #cbd5e1; }
+
+  .hint-text { font-size: 12.5px; font-weight: 600; color: var(--text-muted); text-align: center; }
+
+  /* ==========================================================================
+     PRINT STYLES - SOLUSI ANTI TERPOTONG & ANTI DISTORSI
+     ========================================================================== */
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    
+    html, body { background: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+    .page-bg, .topbar, .control-panel, .hint-text, .lanyard-hole { display: none !important; }
+    .stage { padding: 0 !important; margin: 0 !important; display: block !important; max-width: none !important; }
+    .card-stage-wrapper, .card-stage { perspective: none !important; width: 100% !important; margin: 0 !important; display: block !important; }
+    .id-card { width: auto !important; height: auto !important; position: static !important; }
+
+    .card-inner {
+      transform: none !important; transition: none !important; transform-style: flat !important;
+      display: flex !important; flex-direction: row !important;
+      justify-content: flex-start !important; align-items: flex-start !important;
+      gap: 10mm !important; position: static !important;
+    }
+
+    /* Mencegah background meluber ke seluruh halaman (Relative vs Static issue) */
+    .card-face {
+      position: relative !important; 
+      transform: none !important;
+      width: 54mm !important; height: 85.6mm !important; /* CR80 Standard */
+      border-radius: 3.18mm !important; border: 1px solid #cbd5e1 !important;
+      box-shadow: none !important; page-break-inside: avoid !important; break-inside: avoid !important;
+      display: flex !important; flex-direction: column !important; flex: none !important;
+      -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+      overflow: hidden !important;
+    }
+    .card-back { transform: none !important; }
+
+    /* Scaling Content Depan - Memaksimalkan Ruang & Mencegah Terpotong */
+    .card-header { margin: 2.5mm 2mm 1mm !important; padding: 1mm !important; flex-shrink: 0 !important; }
+    .card-header img { height: 3.5mm !important; max-width: 35mm !important;}
+    
+    .card-front-body { padding: 0.5mm 3mm 2mm !important; justify-content: flex-start !important; gap: 1mm !important; }
+    
+    .photo-container { width: 23mm !important; height: 30mm !important; margin: 0 auto 1mm !important; flex-shrink: 0 !important; }
+    .photo-frame { padding: 0.5mm !important; border-radius: 1.5mm !important; clip-path: polygon(2.5mm 0, 100% 0, 100% calc(100% - 2.5mm), calc(100% - 2.5mm) 100%, 0 100%, 0 2.5mm) !important; }
+    .employee-photo, .initials-avatar { border-radius: 1mm !important; font-size: 14pt !important; clip-path: polygon(2mm 0, 100% 0, 100% calc(100% - 2mm), calc(100% - 2mm) 100%, 0 100%, 0 2mm) !important; }
+    
+    .emp-details { padding: 1mm !important; gap: 0.5mm !important; border-radius: 1.5mm !important; flex-shrink: 0 !important;}
+    .employee-name { font-size: 8pt !important; max-height: 20pt !important; line-height: 1.1 !important; margin-bottom: 0.5mm !important; }
+    .employee-role { font-size: 4.5pt !important; }
+    .dept-badge { font-size: 4pt !important; padding: 0.5mm 1.5mm !important; margin-top: 0.5mm !important;}
+    
+    .barcode-box { padding: 0.5mm !important; margin: 1mm 0 !important; flex-shrink: 0 !important; }
+    .barcode-box svg { max-height: 6mm !important; }
+    
+    .front-footer { padding-top: 1mm !important; margin-top: auto !important; flex-shrink: 0 !important; }
+    .id-label { font-size: 3.5pt !important; }
+    .id-value { font-size: 8pt !important; line-height: 1 !important; }
+    
+    .qr-box.front-qr { width: 14mm !important; height: 14mm !important; padding: 0.5mm !important; }
+
+    /* Scaling Content Belakang */
+    .card-back-body { padding: 2.5mm 3mm !important; gap: 1mm !important; justify-content: flex-start !important;}
+    .back-header { padding-bottom: 1mm !important; margin-bottom: 1mm !important; border-bottom: 1px solid rgba(37,99,235,0.1) !important; flex-shrink: 0 !important; }
+    .back-header img { height: 3mm !important; }
+    .bt-1 { font-size: 3pt !important; } .bt-2 { font-size: 4.5pt !important; }
+
+    .back-section { padding: 1.5mm !important; border-radius: 1.5mm !important; margin-bottom: 0.5mm !important; flex-shrink: 0 !important;}
+    .back-section h3 { font-size: 4.5pt !important; margin-bottom: 1mm !important; gap: 1mm !important; }
+    .back-section h3::before { width: 1mm !important; height: 1mm !important; }
+    
+    .contact-row { gap: 1.5mm !important; margin-bottom: 1mm !important; }
+    .icon-box { width: 3.5mm !important; height: 3.5mm !important; border-radius: 1mm !important; }
+    .icon-box svg { width: 2mm !important; height: 2mm !important; }
+    .contact-text { font-size: 4pt !important; line-height: 1.2 !important; }
+    
+    .terms-list { gap: 0.5mm !important; }
+    .terms-list li { font-size: 3.8pt !important; line-height: 1.1 !important; padding-left: 2mm !important; margin-bottom: 0.5mm !important;}
+    .terms-list li::before { font-size: 4.5pt !important; width: 0.8mm !important; height: 0.8mm !important; top: 0.8mm !important; box-shadow: 0 0 0 0.3mm rgba(37, 99, 235, 0.2) !important; }
+    
+    .back-footer { padding-top: 1mm !important; gap: 1.5mm !important; margin-top: auto !important; flex-shrink: 0 !important;}
+    .back-qr-group { padding: 1mm !important; gap: 1mm !important; border-radius: 1.5mm !important; }
+    .back-qr-group span { font-size: 3pt !important; }
+    
+    .back-qr-group .qr-box { width: 11mm !important; height: 11mm !important; padding: 0.5mm !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-bg"></div>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <img src="MSB Logo.png" alt="Logo">
+    <div class="topbar-title">Digital Identity System</div>
+  </div>
+  <div class="sync-status loading" id="syncPill">
+    <span class="sync-dot"></span>
+    <span id="syncText">Memuat Data...</span>
+  </div>
+</header>
+
+<main class="stage">
+  
+  <aside class="control-panel">
+    <div class="panel-header">Navigasi Karyawan</div>
+    
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Cari NIK / Nama..." autocomplete="off">
+    </div>
+
+    <div class="employee-list" id="employeeList">
+      <p style="text-align:center; font-size:12px; color:var(--text-muted); padding: 20px 0;">Connecting system...</p>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn secondary" id="flipBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+        Balik Pratinjau
+      </button>
+      <button class="btn primary" id="printBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Cetak ID Card
+      </button>
+      <button class="btn secondary" id="refreshBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-10.09l5.25 5.52"/></svg>
+        Sinkronisasi
+      </button>
+    </div>
+  </aside>
+
+  <div class="card-stage-wrapper">
+    <div class="card-stage">
+      <div class="id-card" id="idCard">
+        <div class="card-inner" id="cardInner">
+
+          <!-- FRONT SIDE -->
+          <div class="card-face card-front">
+            <!-- Parameter preserveAspectRatio="xMidYMid slice" untuk mencegah scratch ketarik/distorsi -->
+            <div class="card-bg">
+              <svg width="100%" height="100%" viewBox="0 0 320 508" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="batik" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <circle cx="20" cy="0" r="18" fill="none" stroke="rgba(37, 99, 235, 0.08)" stroke-width="0.75"/>
+                    <circle cx="0" cy="20" r="18" fill="none" stroke="rgba(37, 99, 235, 0.08)" stroke-width="0.75"/>
+                    <circle cx="40" cy="20" r="18" fill="none" stroke="rgba(37, 99, 235, 0.08)" stroke-width="0.75"/>
+                    <circle cx="20" cy="40" r="18" fill="none" stroke="rgba(37, 99, 235, 0.08)" stroke-width="0.75"/>
+                    <path d="M 16 20 Q 20 16 24 20 Q 20 24 16 20 Z" fill="rgba(234, 88, 12, 0.06)"/>
+                  </pattern>
+                  <pattern id="guilloche" x="0" y="0" width="80" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M0 20 Q 20 0, 40 20 T 80 20" fill="none" stroke="rgba(15, 23, 42, 0.04)" stroke-width="0.5"/>
+                    <path d="M0 22 Q 20 2, 40 22 T 80 22" fill="none" stroke="rgba(234, 88, 12, 0.05)" stroke-width="0.5"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="#ffffff" />
+                <rect width="100%" height="100%" fill="url(#batik)" />
+                <rect width="100%" height="100%" fill="url(#guilloche)" />
+                <circle cx="260" cy="80" r="120" fill="rgba(37, 99, 235, 0.04)" filter="blur(15px)"/>
+                <circle cx="40" cy="460" r="100" fill="rgba(234, 88, 12, 0.04)" filter="blur(15px)"/>
+                <path d="M 0 140 L 40 180 L 320 180" fill="none" stroke="rgba(37, 99, 235, 0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+                <path d="M 320 370 L 280 370 L 240 410 L 0 410" fill="none" stroke="rgba(234, 88, 12, 0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+              </svg>
+            </div>
+            
+            <div class="security-line"></div>
+            <div class="lanyard-hole"></div>
+            
+            <div class="card-header">
+              <img src="MSB Logo.png" alt="Logo">
+            </div>
+
+            <div class="card-front-body">
+              <div class="photo-container">
+                <div class="photo-frame">
+                  <img class="employee-photo" id="frontPhoto" alt="Foto Karyawan" style="display:none;">
+                  <div class="initials-avatar" id="frontInitials">?</div>
+                </div>
+              </div>
+
+              <div class="emp-details">
+                <div class="employee-name" id="frontName">—</div>
+                <div class="employee-role" id="frontJabatan">—</div>
+                <div class="dept-badge" id="frontDept">DEPARTEMEN</div>
+              </div>
+
+              <div class="barcode-box">
+                <svg id="barcodeSvg"></svg>
+              </div>
+
+              <div class="front-footer">
+                <div class="id-block">
+                  <span class="id-label">Security ID NO.</span>
+                  <span class="id-value" id="frontId">0000000</span>
+                </div>
+                <div class="qr-box front-qr" id="qrId"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BACK SIDE -->
+          <div class="card-face card-back">
+            <div class="card-bg">
+              <svg width="100%" height="100%" viewBox="0 0 320 508" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="#ffffff" />
+                <rect width="100%" height="100%" fill="url(#batik)" opacity="0.6"/>
+                <rect width="100%" height="100%" fill="url(#guilloche)" opacity="0.8"/>
+                <path d="M 320 0 L 0 200 L 0 508 L 320 508 Z" fill="rgba(248, 250, 252, 0.7)"/>
+              </svg>
+            </div>
+            
+            <div class="card-back-body">
+              
+              <div class="back-header">
+                <div class="back-title">
+                  <span class="bt-1">ISSUED BY</span>
+                  <span class="bt-2">MURINDA SENTRA BAJA</span>
+                </div>
+                <img src="MSB Logo.png" alt="Logo" onerror="this.style.display='none'">
+              </div>
+
+              <div class="back-section">
+                <h3>Contact & Location</h3>
+                <div id="backAddressBox">
+                  <!-- JS Injected Contact Row with Colorful Icons -->
+                </div>
+              </div>
+
+              <div class="back-section">
+                <h3>Terms Of Access</h3>
+                <ul class="terms-list" id="termsList"></ul>
+              </div>
+
+              <div class="back-footer">
+                <div class="back-qr-group">
+                  <div class="qr-box" id="qrMaps"></div>
+                  <span>Location</span>
+                </div>
+                <div class="back-qr-group">
+                  <div class="qr-box" id="qrSign"></div>
+                  <span>Authority</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <p class="hint-text">Klik kartu untuk membalik tampilan.</p>
+  </div>
+
+</main>
+
+<script>
+/* ===================================================================
+   SYSTEM CONFIGURATION & INTEGRATION 
+   =================================================================== */
+const CONFIG = {
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbw20kKOKkbOrp3fXMbZb7pqrbXuLUY3vZamQ_vEy23v-R5URdSanbZRcSK3jwhxceP3EQ/exec',
+  APPSHEET_APP: 'MSBHumanResource-310640119',
+  POLL_INTERVAL_MS: 60000,
+  COMPANY: {
+    address: 'Jl. Raya Kalijati Purwadadi No. 123A RT 006/02 Desa Kalijati Barat, Kecamatan Kalijati Kabupaten Subang, West Java 41271 (Exit Toll Gate Kalijati)',
+    phone: '(+62260) 7495467',
+    email: 'plant@murinda.com',
+    mapsUrl: 'https://maps.app.goo.gl/TQy2zRsXkUDFg9HP7'
+  },
+  TERMS: [
+    'Kartu identitas ini adalah milik sah Perusahaan.',
+    'Wajib dikenakan selama berada di area pabrik & kantor.',
+    'Sistem otentikasi bersifat pribadi & tidak dapat dipindahtangankan.',
+    'Kehilangan kartu wajib segera dilaporkan ke pihak HRD.'
+  ]
+};
+
+let employees = [];
+let currentId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderStaticBack();
+  bindUI();
+  loadEmployees();
+  setInterval(loadEmployees, CONFIG.POLL_INTERVAL_MS);
+});
+
+function bindUI(){
+  document.getElementById('idCard').addEventListener('click', toggleFlip);
+  document.getElementById('flipBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleFlip(); });
+  document.getElementById('printBtn').addEventListener('click', (e) => { e.stopPropagation(); window.print(); });
+  document.getElementById('refreshBtn').addEventListener('click', (e) => { e.stopPropagation(); loadEmployees(); });
+  document.getElementById('searchInput').addEventListener('input', onSearch);
+}
+
+function toggleFlip(){ 
+  document.getElementById('idCard').classList.toggle('flipped'); 
+}
+
+function renderStaticBack(){
+  const addrBox = document.getElementById('backAddressBox');
+  addrBox.innerHTML = `
+    <div class="contact-row">
+      <div class="icon-box" style="background: #e0f2fe; color: #0284c7;">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </div>
+      <span class="contact-text">${CONFIG.COMPANY.address}</span>
+    </div>
+    <div class="contact-row">
+      <div class="icon-box" style="background: #dcfce7; color: #16a34a;">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+      </div>
+      <span class="contact-text">${CONFIG.COMPANY.phone}</span>
+    </div>
+    <div class="contact-row">
+      <div class="icon-box" style="background: #ffedd5; color: #ea580c;">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+      </div>
+      <span class="contact-text">${CONFIG.COMPANY.email}</span>
+    </div>
+  `;
+
+  const list = document.getElementById('termsList');
+  list.innerHTML = '';
+  CONFIG.TERMS.forEach(t => {
+    const li = document.createElement('li'); li.textContent = t; list.appendChild(li);
+  });
+  
+  renderQR('qrMaps', CONFIG.COMPANY.mapsUrl);
+}
+
+async function loadEmployees(){
+  setStatus('loading', 'Sinkronisasi Data...');
+  try {
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?action=list`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Gagal memuat sistem.');
+
+    employees = json.data || [];
+    renderList(employees);
+    setStatus('online', 'Sistem Aktif');
+
+    if (currentId){
+      const still = employees.find(e => String(e['ID Karyawan']) === String(currentId));
+      if (still) renderCard(still);
+      else if (employees.length) selectEmployee(employees[0]['ID Karyawan']);
+    } else if (employees.length){
+      selectEmployee(employees[0]['ID Karyawan']);
+    }
+  } catch(err){
+    setStatus('error', 'Koneksi Offline');
+  }
+}
+
+function setStatus(state, text){
+  const pill = document.getElementById('syncPill');
+  pill.className = 'sync-status ' + state;
+  document.getElementById('syncText').textContent = text;
+}
+
+function renderList(list){
+  const el = document.getElementById('employeeList');
+  el.innerHTML = '';
+  if (!list.length){
+    el.innerHTML = '<p style="text-align:center; font-size:12px; color:var(--text-muted); padding:20px;">Data tidak ditemukan.</p>';
+    return;
+  }
+  list.forEach(emp => {
+    const row = document.createElement('div');
+    row.className = 'emp-row' + (String(emp['ID Karyawan']) === String(currentId) ? ' active' : '');
+    row.innerHTML = `
+      <span class="emp-name">${escapeHtml(emp['Nama Lengkap'] || '—')}</span>
+      <span class="emp-meta">ID: ${escapeHtml(String(emp['ID Karyawan'] || ''))} • ${escapeHtml(emp['Departemen'] || '')}</span>`;
+    row.addEventListener('click', () => selectEmployee(emp['ID Karyawan']));
+    el.appendChild(row);
+  });
+}
+
+function onSearch(e){
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = employees.filter(emp =>
+    String(emp['ID Karyawan']).toLowerCase().includes(q) ||
+    String(emp['Nama Lengkap']).toLowerCase().includes(q)
+  );
+  renderList(filtered);
+}
+
+function selectEmployee(id){
+  currentId = id;
+  const emp = employees.find(e => String(e['ID Karyawan']) === String(id));
+  if (!emp) return;
+  renderCard(emp);
+  renderList(employees);
+}
+
+function constructAppSheetImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  
+  const appName = CONFIG.APPSHEET_APP;
+  const tableName = 'Karyawan';
+  const encodedPath = encodeURIComponent(path);
+  return `https://www.appsheet.com/template/gettablefileurl?appName=${appName}&tableName=${tableName}&fileName=${encodedPath}`;
+}
+
+function renderCard(emp){
+  const name = emp['Nama Lengkap'] || '—';
+  const idKaryawan = emp['ID Karyawan'] || '—';
+  const jabatan = emp['Jabatan'] || '—';
+  const departemen = emp['Departemen'] || '—';
+
+  document.getElementById('frontName').textContent = name;
+  document.getElementById('frontJabatan').textContent = jabatan;
+  document.getElementById('frontDept').textContent = departemen;
+  document.getElementById('frontId').textContent = idKaryawan;
+
+  const img = document.getElementById('frontPhoto');
+  const initials = document.getElementById('frontInitials');
+  
+  const fotoPath = emp['Foto Profil']; 
+  const finalFotoUrl = constructAppSheetImageUrl(fotoPath);
+
+  if (finalFotoUrl){
+    img.src = finalFotoUrl;
+    img.style.display = 'block';
+    initials.style.display = 'none';
+    
+    img.onerror = () => { 
+      img.style.display = 'none'; 
+      initials.style.display = 'flex'; 
+      initials.textContent = getInitials(name);
+    };
+  } else {
+    img.style.display = 'none'; 
+    initials.style.display = 'flex';
+    initials.textContent = getInitials(name);
+  }
+
+  renderBarcode(idKaryawan);
+
+  renderQR('qrId', `VERIFIED|${idKaryawan}|${name}|${jabatan}`);
+  if (emp['Tanda Tangan Digital']) {
+    renderQR('qrSign', emp['Tanda Tangan Digital']);
+  } else {
+    renderQR('qrSign', `SIGN|${idKaryawan}`);
+  }
+}
+
+function renderBarcode(id){
+  if (!id || id === '—') return;
+  try {
+    JsBarcode("#barcodeSvg", String(id), {
+      format: "CODE128",
+      lineColor: "#0f172a",
+      width: 1.8,
+      height: 30,
+      displayValue: false,
+      margin: 0,
+      background: "transparent"
+    });
+  } catch (err) {
+    console.error("Barcode error:", err);
+  }
+}
+
+function renderQR(elId, text){
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: String(text), width: 150, height: 150,
+    colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+function getInitials(name){
+  return String(name).trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+</script>
+</body>
+</html>
