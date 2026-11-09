@@ -72,7 +72,10 @@ button,input{font:inherit;color:inherit}
 .lw{position:absolute;z-index:2;top:34px;left:0;right:0;text-align:center}
 .lw img{display:inline-block;height:36px}
 .photo{position:absolute;z-index:3;top:85px;left:50%;width:138px;height:138px;margin-left:-69px;overflow:hidden;border:5px solid #fff;border-radius:50%;background:#e4e9f0;box-shadow:0 6px 18px rgba(10,18,67,.3)}
-.photo img{display:block;width:100%;height:100%;object-fit:cover}
+.photo img{display:block;position:relative;z-index:1;width:100%;height:100%;object-fit:contain}
+.photo img.pbg{position:absolute;inset:0;z-index:0;object-fit:cover;filter:blur(14px);transform:scale(1.35)}
+.photo.fill img{object-fit:cover;object-position:50% 12%}
+.photo.fill img.pbg{display:none}
 .ini{display:grid;place-items:center;width:100%;height:100%;font:700 50px var(--display);letter-spacing:.02em;color:#1f3a8f}
 .who{position:absolute;top:234px;left:0;right:0;padding:0 16px;text-align:center}
 .nm{display:flex;align-items:center;justify-content:center;height:54px;font:400 25px/1.12 var(--slab);text-transform:uppercase;overflow:hidden}
@@ -173,6 +176,7 @@ button,input{font:inherit;color:inherit}
             <div class="slot"></div>
             <div class="lw"><img data-logo-w alt="PT Murinda Sentra Baja"></div>
             <div class="photo">
+              <img class="pbg" id="picBg" alt="" aria-hidden="true" style="display:none">
               <img id="pic" alt="Foto karyawan" style="display:none">
               <div class="ini" id="ini">?</div>
             </div>
@@ -230,6 +234,8 @@ const CFG = {
   verify: 'https://script.google.com/macros/s/AKfycbw20kKOKkbOrp3fXMbZb7pqrbXuLUY3vZamQ_vEy23v-R5URdSanbZRcSK3jwhxceP3EQ/exec',
   // Isi sama dengan API_TOKEN pada Code.gs jika token diaktifkan (kosong = tanpa token).
   token: '',
+  // Tampilan foto di lingkaran: 'fit' = seluruh foto terlihat (sisa area diisi blur), 'fill' = penuh lingkaran (bagian bawah yang terpotong, kepala diprioritaskan)
+  fotoMode: 'fit',
   co: {
     address: 'Jl. Raya Kalijati Purwadadi No. 123A RT 006/02 Desa Kalijati Barat, Kecamatan Kalijati Kabupaten Subang, West Java 41271 (Exit Toll Gate Kalijati)',
     phone: '(+62260) 7495467',
@@ -356,11 +362,12 @@ function show() {
   $('nik').textContent = e.nik || e.id || '—';
   $('gd').textContent = e.golda || '—';
 
-  const pic = $('pic'), av = $('ini'), key = e.key;
+  const pic = $('pic'), bg = $('picBg'), av = $('ini'), key = e.key;
   av.textContent = ini(name);
   if (pic.dataset.key !== key) {  // ganti karyawan: tampilkan inisial dulu sampai foto siap
     av.style.display = 'grid';
     pic.style.display = 'none';
+    bg.style.display = 'none';
     pic.removeAttribute('src');
     delete pic.dataset.key;
   }
@@ -369,8 +376,9 @@ function show() {
       if (cur !== key) return;                    // pilihan sudah berganti
       const src = srv || photoUrl(e);             // cadangan: tautan langsung
       if (!src || (pic.dataset.key === key && pic.getAttribute('src') === src)) return;
-      pic.onload = () => { pic.dataset.key = key; pic.style.display = 'block'; av.style.display = 'none'; };
-      pic.onerror = () => { pic.style.display = 'none'; av.style.display = 'grid'; };
+      pic.onload = () => { pic.dataset.key = key; pic.style.display = 'block'; bg.style.display = 'block'; av.style.display = 'none'; };
+      pic.onerror = () => { pic.style.display = 'none'; bg.style.display = 'none'; av.style.display = 'grid'; };
+      bg.src = src;
       pic.src = src;
     });
   }
@@ -411,6 +419,7 @@ $('bS').addEventListener('click', () => load());
 $('bP').addEventListener('click', () => window.print());
 $('q').addEventListener('input', renderList);
 
+document.querySelector('.photo').classList.toggle('fill', CFG.fotoMode === 'fill');
 renderBack();
 load();
 setInterval(() => load(true), CFG.poll);
