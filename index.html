@@ -323,6 +323,21 @@ function photoUrl(e) {
     : `https://www.appsheet.com/template/gettablefileurl?appName=${CFG.appsheet}&tableName=Karyawan&fileName=${encodeURIComponent(e.foto)}`;
 }
 
+const photoCache = {};  // key karyawan -> data URL foto (hanya yang berhasil)
+
+// Ambil foto lewat server (akun pemilik script), jadi tetap tampil walau file Drive tidak publik
+async function fetchPhoto(e) {
+  if (photoCache[e.key]) return photoCache[e.key];
+  let src = '';
+  try {
+    const r = await fetch(CFG.url + '?action=photo&id=' + encodeURIComponent(e.id) + (CFG.token ? '&token=' + encodeURIComponent(CFG.token) : ''), { cache: 'no-store' });
+    const j = await r.json();
+    if (j.success && j.dataUrl) src = j.dataUrl;
+  } catch (_) {}
+  if (src) photoCache[e.key] = src;
+  return src;
+}
+
 function qr(id, text, low) {
   const el = $(id);
   el.innerHTML = '';
@@ -341,14 +356,23 @@ function show() {
   $('nik').textContent = e.nik || e.id || '—';
   $('gd').textContent = e.golda || '—';
 
-  const pic = $('pic'), av = $('ini'), u = photoUrl(e);
+  const pic = $('pic'), av = $('ini'), key = e.key;
   av.textContent = ini(name);
-  av.style.display = 'grid';
-  pic.style.display = 'none';
-  if (u) {
-    pic.onload = () => { pic.style.display = 'block'; av.style.display = 'none'; };
-    pic.onerror = () => { pic.style.display = 'none'; av.style.display = 'grid'; };
-    pic.src = u;
+  if (pic.dataset.key !== key) {  // ganti karyawan: tampilkan inisial dulu sampai foto siap
+    av.style.display = 'grid';
+    pic.style.display = 'none';
+    pic.removeAttribute('src');
+    delete pic.dataset.key;
+  }
+  if (e.foto || e.fotoUrl) {
+    fetchPhoto(e).then(srv => {
+      if (cur !== key) return;                    // pilihan sudah berganti
+      const src = srv || photoUrl(e);             // cadangan: tautan langsung
+      if (!src || (pic.dataset.key === key && pic.getAttribute('src') === src)) return;
+      pic.onload = () => { pic.dataset.key = key; pic.style.display = 'block'; av.style.display = 'none'; };
+      pic.onerror = () => { pic.style.display = 'none'; av.style.display = 'grid'; };
+      pic.src = src;
+    });
   }
 
   const code = e.nik || e.id || '';
