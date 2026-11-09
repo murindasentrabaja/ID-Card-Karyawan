@@ -89,8 +89,13 @@ button,input{font:inherit;color:inherit}
 .front .tb b,.front .tb span{min-height:30px;line-height:30px}
 .qr{position:absolute;width:70px;height:70px;padding:5px;border:1px solid #cfe0f2;border-radius:8px;background:#fff}
 .qr img,.qr canvas{display:block;width:100%!important;height:100%!important}
-.fb{position:absolute;left:104px;right:24px;top:428px}
+.fb{position:absolute;left:104px;right:24px;top:424px}
 #bar{display:block;width:100%;height:30px}
+.bn{display:flex;align-items:center;gap:7px;margin-top:5px}
+.bn i{flex:1;min-width:0;height:1px;background:linear-gradient(90deg,rgba(21,144,232,0),rgba(21,144,232,.6))}
+.bn i:last-child{background:linear-gradient(90deg,rgba(21,144,232,.6),rgba(21,144,232,0))}
+.bn span{flex:none;margin-right:-.3em;font:700 13px/1 var(--display);letter-spacing:.3em;color:var(--navy);font-variant-numeric:tabular-nums}
+.bn span.sm{margin-right:-.12em;font-size:12px;letter-spacing:.12em}
 .cap{margin-top:3px;font:800 8.5px var(--sans);text-align:center;white-space:nowrap;color:var(--navy)}
 .bt{position:absolute;z-index:2;top:34px;left:20px;right:20px;text-align:center;font:500 9.5px/1.5 var(--slab);color:#fff}
 .bt small{display:block;font:700 9px var(--slab);letter-spacing:.16em;text-transform:uppercase;color:#4db0fb}
@@ -189,7 +194,7 @@ button,input{font:inherit;color:inherit}
               <b id="nikL">NIK</b><span id="nik">—</span>
             </div>
             <div class="qr" id="qrId" style="left:22px;top:422px"></div>
-            <div class="fb"><svg id="bar"></svg></div>
+            <div class="fb"><svg id="bar"></svg><div class="bn"><i></i><span id="barNo"></span><i></i></div></div>
           </div>
 
           <!-- BELAKANG -->
@@ -230,7 +235,7 @@ const CFG = {
   url: 'https://script.google.com/macros/s/AKfycbw20kKOKkbOrp3fXMbZb7pqrbXuLUY3vZamQ_vEy23v-R5URdSanbZRcSK3jwhxceP3EQ/exec',
   poll: 60000,
   appsheet: 'MSBHumanResource-310640119',
-  // Isi dengan URL Web App verifikasi (lihat panduan). Kosong = QR berisi teks biasa (mudah dipalsukan).
+  // Isi dengan URL Web App verifikasi (lihat panduan). Kosong = QR berisi teks biasa (mudah dipalsukan). QR memverifikasi lewat NIK.
   verify: 'https://script.google.com/macros/s/AKfycbw20kKOKkbOrp3fXMbZb7pqrbXuLUY3vZamQ_vEy23v-R5URdSanbZRcSK3jwhxceP3EQ/exec',
   // Isi sama dengan API_TOKEN pada Code.gs jika token diaktifkan (kosong = tanpa token).
   token: '',
@@ -389,9 +394,13 @@ function show() {
   } catch (_) { $('bar').innerHTML = ''; }
 
   $('bar').setAttribute('preserveAspectRatio', 'none');
-  // QR depan: pakai link pendek (kotak QR jarang & mudah discan); cadangan: URL panjang
-  const vUrl = e.verifyLink || (CFG.verify ? CFG.verify + (CFG.verify.includes('?') ? '&' : '?') + 'action=verify&id=' + encodeURIComponent(e.id) : '');
-  qr('qrId', vUrl || ['VERIFIED', e.id, e.nik, name, e.jabatan].join('|'), !e.verifyLink);
+  $('barNo').textContent = code;  // angka yang dikodekan kode batang, tampil persis di bawahnya
+  $('barNo').classList.toggle('sm', code.length > 10);  // kode panjang: jarak huruf dirapatkan agar muat
+  // QR depan memverifikasi lewat NIK. Karyawan yang NIK-nya belum terisi memakai ID sebagai cadangan.
+  // Pakai link pendek bila ada (kotak QR jarang & mudah discan); cadangan: URL panjang.
+  const vKey = e.nik ? 'nik=' + encodeURIComponent(e.nik) : 'id=' + encodeURIComponent(e.id);
+  const vUrl = e.verifyLink || (CFG.verify ? CFG.verify + (CFG.verify.includes('?') ? '&' : '?') + 'action=verify&' + vKey : '');
+  qr('qrId', vUrl || ['VERIFIED', code, name, e.jabatan].join('|'), !e.verifyLink);
   qr('qrSign', /^https?:/i.test(e.sign) ? e.sign : 'SIGN|' + (e.id || name));
 }
 
